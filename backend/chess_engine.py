@@ -8,7 +8,6 @@ import chess
 import chess.engine
 from typing import Optional
 import os
-import stat
 
 
 class ChessEngine:

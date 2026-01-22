@@ -6,9 +6,10 @@ from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 import socketio
-from rooms import RoomManager
-from chess_engine import ChessEngine
-from socket_manager import SocketManager
+# Fixed imports for package structure
+from backend.rooms import RoomManager
+from backend.chess_engine import ChessEngine
+from backend.socket_manager import SocketManager
 import uvicorn
 import os
 

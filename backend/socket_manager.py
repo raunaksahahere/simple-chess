@@ -4,8 +4,9 @@ Socket.IO event handlers for real-time chess game communication.
 
 import socketio
 from typing import Dict
-from rooms import RoomManager, Room
-from chess_engine import ChessEngine
+# Fixed imports for package structure
+from backend.rooms import RoomManager, Room
+from backend.chess_engine import ChessEngine
 
 
 class SocketManager:
