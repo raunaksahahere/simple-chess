@@ -24,7 +24,8 @@ class SocketManager:
         self.sio.on('disconnect')(self.on_disconnect)
         self.sio.on('join_room')(self.on_join_room)
         self.sio.on('player_move')(self.on_player_move)
-    
+        self.sio.on('ai_move_request')(self.on_ai_move_request)
+
     async def on_connect(self, sid, environ):
         """Handle client connection."""
         print(f"Client connected: {sid}")
@@ -276,3 +277,61 @@ class SocketManager:
                 await self.auto_play_for_raunak(room_id, room)
             else:
                 await self.sio.emit('error', {'message': 'Invalid move'}, to=sid)
+
+    async def on_ai_move_request(self, sid, data):
+        """Handle AI move request."""
+        username = self.socket_to_username.get(sid)
+        if not username:
+            await self.sio.emit('error', {'message': 'Not authenticated'}, to=sid)
+            return
+
+        room_id = data.get('room_id', 'default')
+        room = self.room_manager.get_room(room_id)
+        
+        if not room:
+            await self.sio.emit('error', {'message': 'Room not found'}, to=sid)
+            return
+            
+        # Verify it's Raunak's turn
+        if username.lower() != "raunak":
+             await self.sio.emit('error', {'message': 'Only AI can request AI moves'}, to=sid)
+             return
+             
+        # Check turn logic
+        is_white_turn = room.board.turn
+        players_list = list(room.players.keys())
+        if len(players_list) < 2:
+            return
+            
+        player_index = players_list.index(username)
+        is_player_white = (player_index == 0)
+        
+        if is_player_white != is_white_turn:
+            await self.sio.emit('error', {'message': 'Not your turn'}, to=sid)
+            return
+
+        # Execute AI move
+        ai_move = self.chess_engine.get_best_move(room.board, room.move_count)
+        
+        if ai_move:
+            move_uci = ai_move.uci()
+            if room.make_move(move_uci):
+                # Broadcast to both players
+                await self.sio.emit('move_update', {
+                    'fen': room.get_fen(),
+                    'move_uci': move_uci,
+                    'username': username
+                }, room=room_id)
+                
+                # Send game state update
+                await self.sio.emit('game_state', {
+                    'fen': room.get_fen(),
+                    'turn': room.get_turn(),
+                    'status': room.get_status()
+                }, room=room_id)
+                
+                print(f"AI move executed for {username}: {move_uci}")
+            else:
+                await self.sio.emit('error', {'message': 'Invalid AI move generated'}, to=sid)
+        else:
+            await self.sio.emit('error', {'message': 'AI failed to generate move'}, to=sid)
